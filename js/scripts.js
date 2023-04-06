@@ -52,7 +52,7 @@ function initParticles() {
     gameContainer.appendChild(uniqueParticle);
   
     for (let i = 0; i < numParticles; i++) {
-      const particleUrl = './assets/VoidPixel.png';
+      const particleUrl = './assets/voidPixel.png';
       const particle = createParticle(particleUrl);
       particle.dataset.dx = (Math.random() * 4 - 2);
       particle.dataset.dy = (Math.random() * 4 - 2);
