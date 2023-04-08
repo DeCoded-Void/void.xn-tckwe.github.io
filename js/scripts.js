@@ -1,121 +1,129 @@
 const gameContainer = document.getElementById('game-container');
+gameContainer.width = window.innerWidth;
+gameContainer.height = window.innerHeight;
+const ctx = gameContainer.getContext('2d');
 const numParticles = window.innerHeight > window.innerWidth ? 150 : 300;
 const uniqueParticleUrl = './assets/voidGibulous.png';
+const particleUrl = './assets/voidPixel.png';
+let particles = [];
 let uniqueParticle;
 let bgMusic;
 
 // Helper function to create particles
 function createParticle(url, unique = false) {
-    const img = document.createElement('img');
-    img.src = url;
-    img.className = 'particle';
-    img.style.position = 'fixed';
-    img.style.pointerEvents = unique ? 'auto' : 'none';
-    const particleSize = (window.innerHeight * 0.05);
-    img.style.height = particleSize + 'px';
-    img.style.width = particleSize + 'px';
-    img.style.zIndex = unique ? '1' : '2';
-  
-    // Calculate the initial position accounting for the particle's width
-    img.style.left = Math.random() * (window.innerWidth - particleSize) + 'px';
-    img.style.top = Math.random() * (window.innerHeight - particleSize) + 'px';
-  
-    return img;
-  }
-  
+  const x = Math.random() * (window.innerWidth - 50);
+  const y = Math.random() * (window.innerHeight - 50);
 
-function startBackgroundMusic() {
-  if (bgMusic) {
-    return;
-  }
-  bgMusic = new Audio('https://fi.zophar.net/soundfiles/nintendo-ds-2sf/super-mario-64-ds/04%20BGM%20%2304%20%5BNCS_BGM_CASINO%5D.mp3');
-  bgMusic.loop = true;
-  bgMusic.volume = 0.5;
-  bgMusic.play();
-  document.removeEventListener('mousedown', startBackgroundMusic);
-  document.removeEventListener('keydown', startBackgroundMusic);
+  const particle = {
+    x: x,
+    y: y,
+    dx: (Math.random() * 4 - 2),
+    dy: (Math.random() * 4 - 2),
+    img: new Image(),
+    unique: unique,
+  };
+
+  particle.img.src = url;
+  return particle;
 }
-
-document.addEventListener('mousedown', startBackgroundMusic);
-document.addEventListener('keydown', startBackgroundMusic);
-
 
 // Initialize particles
 function initParticles() {
-    // Initialize unique particle
-    uniqueParticle = createParticle(uniqueParticleUrl, true);
-    uniqueParticle.dataset.dx = (Math.random() * 4 - 2);
-    uniqueParticle.dataset.dy = (Math.random() * 4 - 2);
-    uniqueParticle.addEventListener('click', () => {
-      victory();
-    });
-    gameContainer.appendChild(uniqueParticle);
-  
-    for (let i = 0; i < numParticles; i++) {
-      const particleUrl = './assets/voidPixel.png';
-      const particle = createParticle(particleUrl);
-      particle.dataset.dx = (Math.random() * 4 - 2);
-      particle.dataset.dy = (Math.random() * 4 - 2);
-      gameContainer.appendChild(particle);
+  // Initialize unique particle
+  uniqueParticle = createParticle(uniqueParticleUrl, true);
+  particles.push(uniqueParticle);
+
+  for (let i = 0; i < numParticles; i++) {
+    const particle = createParticle(particleUrl);
+    particles.push(particle);
+  }
+
+  // Start moving particles
+  moveParticles();
+}
+
+// DVD Screensaver effect
+function moveParticles() {
+  ctx.clearRect(0, 0, gameContainer.width, gameContainer.height);
+
+  particles.forEach(particle => {
+    if (!particle.clicked) {
+      particle.x += particle.dx;
+      particle.y += particle.dy;
+
+      if (particle.x < 0 || particle.x + 50 > window.innerWidth) {
+        particle.dx = -particle.dx;
+      }
+
+      if (particle.y < 0 || particle.y + 50 > window.innerHeight) {
+        particle.dy = -particle.dy;
+      }
     }
-  
-    // Start moving particles
-    moveParticles();
+
+    if (!particle.fadeOut || particle.alpha > 0) {
+      ctx.globalAlpha = particle.alpha;
+      ctx.drawImage(particle.img, particle.x, particle.y, 50, 50);
+      ctx.globalAlpha = 1;
+    }
+
+    if (particle.fadeOut && particle.alpha > 0) {
+      particle.alpha -= 0.01;
+    }
+  });
+
+  requestAnimationFrame(moveParticles);
+}
+
+gameContainer.addEventListener('click', (e) => {
+  const x = e.clientX;
+  const y = e.clientY;
+  const uniqueX = uniqueParticle.x;
+  const uniqueY = uniqueParticle.y;
+
+  if (
+    x >= uniqueX && x <= uniqueX + 50 &&
+    y >= uniqueY && y <= uniqueY + 50
+  ) {
+    victory();
   }
-  
-  // DVD Screensaver effect
-  function moveParticles() {
-    const particles = document.querySelectorAll('.particle');
-  
-    particles.forEach(particle => {
-      if (particle === uniqueParticle && particle.dataset.clicked === 'true') {
-        return;
-      }
-  
-      const dx = parseFloat(particle.dataset.dx);
-      const dy = parseFloat(particle.dataset.dy);
-      let x = parseFloat(particle.style.left);
-      let y = parseFloat(particle.style.top);
-  
-      x += dx;
-      y += dy;
-  
-      if (x < 0 || x + parseFloat(particle.style.width) > window.innerWidth) {
-        particle.dataset.dx = -dx;
-        x += -2 * dx;
-      }
-  
-      if (y < 0 || y + parseFloat(particle.style.height) > window.innerHeight) {
-        particle.dataset.dy = -dy;
-        y += -2 * dy;
-      }
-  
-      particle.style.left = x + 'px';
-      particle.style.top = y + 'px';
-    });
-  
-    requestAnimationFrame(moveParticles);
-  }
-  
+});
 
 // Victory function
 function victory() {
   const victorySound = new Audio('./assets/victory.wav');
   victorySound.play();
-  uniqueParticle.dataset.clicked = 'true';
+  uniqueParticle.clicked = true;
 
-  const particles = document.getElementsByClassName('particle');
-  for (let particle of particles) {
+  particles.forEach(particle => {
     if (particle === uniqueParticle) {
-      continue;
+      return;
     }
-    particle.style.transition = 'opacity 1s';
-    particle.style.opacity = 0;
+
+    particle.dx = 0;
+    particle.dy = 0;
+    particle.fadeOut = true;
+    particle.alpha = 1;
+  });
+
+  setTimeout(() => {
+    window.location.href = 'https://www.decodedvoid.com';
+  }, 4000);
 }
-setTimeout(() => {
-window.location.href = 'https://www.decodedvoid.com';
-}, 4000);
+// Start Background Music
+function startBackgroundMusic() {
+if (bgMusic) {
+return;
 }
+bgMusic = new Audio('https://fi.zophar.net/soundfiles/nintendo-ds-2sf/super-mario-64-ds/04%20BGM%20%2304%20%5BNCS_BGM_CASINO%5D.mp3');
+bgMusic.loop = true;
+bgMusic.volume = 0.5;
+bgMusic.play();
+document.removeEventListener('mousedown', startBackgroundMusic);
+document.removeEventListener('keydown', startBackgroundMusic);
+}
+
+document.addEventListener('mousedown', startBackgroundMusic);
+document.addEventListener('keydown', startBackgroundMusic);
 
 // Initialize the game
 initParticles();
